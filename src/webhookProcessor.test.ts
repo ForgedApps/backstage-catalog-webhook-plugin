@@ -5,6 +5,7 @@ import type {
 import { mockServices } from "@backstage/backend-test-utils";
 import { CatalogClient } from "@backstage/catalog-client";
 import { ConfigReader } from "@backstage/config";
+import { cleanupCache } from "./cache";
 import { createWebhookProcessor } from "./webhookProcessor";
 
 jest.mock("@backstage/catalog-client");
@@ -93,5 +94,7 @@ describe("WebhookProcessor", () => {
 			"https://example.com/webhook",
 			expect.any(Object),
 		);
+
+		await cleanupCache();
 	});
 });

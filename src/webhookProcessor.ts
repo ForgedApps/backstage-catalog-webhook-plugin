@@ -1,11 +1,12 @@
-import { CatalogClient } from "@backstage/catalog-client";
-import { initCache, saveCache } from "./cache";
+import crypto from "node:crypto";
 import type {
+	AuthService,
+	DiscoveryService,
 	LoggerService,
 	RootConfigService,
-	DiscoveryService,
-	AuthService,
 } from "@backstage/backend-plugin-api";
+import { CatalogClient } from "@backstage/catalog-client";
+import { initCache, saveCache } from "./cache";
 
 export const createWebhookProcessor = (
 	logger: LoggerService,
@@ -67,6 +68,7 @@ export const createWebhookProcessor = (
 				return;
 			}
 
+			// load cache into memory for processing
 			let tagCache = await initCache();
 
 			const entities = [];
@@ -99,27 +101,44 @@ export const createWebhookProcessor = (
 				logger.error(`Error fetching entities: ${error}`);
 			}
 
+			const payload = JSON.stringify({ entities });
+
 			try {
-				const response = await fetch(remoteEndpoint, {
-					method: "POST",
-					headers: {
+				if (entities.length) {
+					const headers: Record<string, string> = {
 						"Content-Type": "application/json",
-					},
-					body: JSON.stringify({
-						entities,
-						secret,
-					}),
-				});
+					};
 
-				if (!response.ok)
-					throw Error(
-						`Failed to post catalog to ${remoteEndpoint}: ${response.statusText}`,
-					);
+					if (secret) {
+						const signature = crypto
+							.createHmac("sha256", secret)
+							.update(payload)
+							.digest("hex");
+						headers["x-hub-signature-256"] = `sha256=${signature}`;
+					}
 
-				await saveCache(tagCache);
+					const response = await fetch(remoteEndpoint, {
+						method: "POST",
+						headers,
+						body: payload,
+					});
+
+					if (!response.ok) {
+						const body = response ? await response.text() : "";
+						throw Error(
+							`Failed to post catalog to remote endpoint: ${response.statusText} ${body}`,
+						);
+					}
+
+					await saveCache(tagCache);
+				}
+
 				tagCache = new Map(); // free up memory
+				logger.info(
+					`Catalog webhook processed ${entities.length} changed entities`,
+				);
 			} catch (error) {
-				logger.error(`Error reporting to ${remoteEndpoint}: ${error}`);
+				logger.error(`Error reporting to remote endpoint: ${error}`);
 			}
 		} finally {
 			isProcessing = false;

@@ -66,19 +66,65 @@ The plugin will:
 4. Include the configured secret in the webhook payload for security (if provided)
 5. Log information about its operations, including any errors encountered
 
-### Webhook Payload
+### Webhook Payload and Validation
 
 The webhook payload will be sent as a POST request with the following structure:
 
 ```json
 {
-  "entities": [...],
-  "timestamp": "2023-04-20T12:34:56Z",
-  "secret": "your-secret-key"
+  "entities": [...]
 }
 ```
 
-The receiving server should validate the secret before processing the payload.
+### Validating Webhook Deliveries
+
+If you've configured a secret key, the plugin will send a signature in the `X-Hub-Signature-256` header of each webhook request. This allows you to verify that the webhook payload was sent by your Backstage instance and hasn't been tampered with.
+
+To validate the webhook delivery on your receiving server:
+
+1. Extract the signature from the `X-Hub-Signature-256` header.
+2. Compute the HMAC signature of the raw request body using your secret key.
+3. Compare the computed signature with the one in the header.
+
+Here's an example of how to validate the signature in Node.js:
+
+```javascript
+const crypto = require('crypto');
+
+function validateWebhook(req, secret) {
+  const signature = req.headers['x-hub-signature-256'];
+  if (!signature) {
+    throw new Error('No X-Hub-Signature-256 found on request');
+  }
+
+  const [algorithm, hash] = signature.split('=');
+  if (algorithm !== 'sha256') {
+    throw new Error('Unexpected hash algorithm');
+  }
+
+  const hmac = crypto.createHmac(algorithm, secret);
+  const digest = hmac.update(req.body).digest('hex');
+
+  if (!crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(digest))) {
+    throw new Error('Request body digest did not match X-Hub-Signature-256');
+  }
+
+  // If we reach here, the signature is valid
+  console.log('Webhook signature verified');
+}
+```
+
+In this example, `req.body` should be the parsed JSON body of the request. Adjust this according to your server setup if needed.
+
+Remember to use a constant-time comparison function (like `crypto.timingSafeEqual`) to prevent timing attacks.
+
+Only process the webhook payload if the signature is valid. This ensures that the request came from your Backstage instance and wasn't tampered with in transit.
+
+### Security Considerations
+
+- Keep your secret key secure and don't expose it in your code or version control.
+- Use HTTPS for your webhook endpoint to ensure the payload and headers are encrypted in transit.
+- Regularly rotate your secret key as a best practice.
 
 ## Troubleshooting
 

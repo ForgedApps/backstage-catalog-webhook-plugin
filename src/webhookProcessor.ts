@@ -71,75 +71,83 @@ export const createWebhookProcessor = (
 			// load cache into memory for processing
 			let tagCache = await initCache();
 
-			const entities = [];
-			const limit = 500;
+			const batchSize =
+				config.getOptionalNumber("catalog.webhook.batchSize") || 500;
+			let totalProcessed = 0;
+			let totalEntities = 0;
 
-			try {
-				for (let offset = 0; ; offset += limit) {
+			for (let offset = 0; ; offset += batchSize) {
+				const entities = [];
+
+				try {
 					const { items } = await catalogClient.getEntities(
-						{ limit, offset },
+						{ limit: batchSize, offset },
 						token,
 					);
 
+					totalEntities += items.length;
+
 					for (const item of items) {
 						const {
-							metadata: { name, etag },
+							metadata: { uid, etag },
 						} = item;
 
+						if (!uid) continue;
+
 						// check if the entity has changed since the last time we checked
-						if (!etag || tagCache.get(name) !== etag) {
+						if (!etag || tagCache.get(uid) !== etag) {
 							entities.push(item);
 
 							// update the cache with the new ETag
-							if (etag) tagCache.set(name, etag);
+							if (etag) tagCache.set(uid, etag);
 						}
 					}
 
-					if (items.length < limit) break;
-				}
-			} catch (error) {
-				logger.error(`Error fetching entities: ${error}`);
-			}
+					if (entities.length > 0) {
+						const payload = JSON.stringify({ entities });
 
-			const payload = JSON.stringify({ entities });
+						const headers: Record<string, string> = {
+							"Content-Type": "application/json",
+						};
 
-			try {
-				if (entities.length) {
-					const headers: Record<string, string> = {
-						"Content-Type": "application/json",
-					};
+						if (secret) {
+							const signature = crypto
+								.createHmac("sha256", secret)
+								.update(payload)
+								.digest("hex");
+							headers["x-hub-signature-256"] = `sha256=${signature}`;
+						}
 
-					if (secret) {
-						const signature = crypto
-							.createHmac("sha256", secret)
-							.update(payload)
-							.digest("hex");
-						headers["x-hub-signature-256"] = `sha256=${signature}`;
+						const response = await fetch(remoteEndpoint, {
+							method: "POST",
+							headers,
+							body: payload,
+						});
+
+						if (!response.ok) {
+							const body = response ? await response.text() : "";
+							throw Error(
+								`Failed to post catalog to remote endpoint: ${response.statusText} ${body}`,
+							);
+						}
+
+						totalProcessed += entities.length;
 					}
 
-					const response = await fetch(remoteEndpoint, {
-						method: "POST",
-						headers,
-						body: payload,
-					});
-
-					if (!response.ok) {
-						const body = response ? await response.text() : "";
-						throw Error(
-							`Failed to post catalog to remote endpoint: ${response.statusText} ${body}`,
-						);
-					}
-
-					await saveCache(tagCache);
+					if (items.length < batchSize) break;
+				} catch (error) {
+					logger.error(`Error processing entities: ${error}`);
+					break;
 				}
-
-				tagCache = new Map(); // free up memory
-				logger.info(
-					`Catalog webhook processed ${entities.length} changed entities`,
-				);
-			} catch (error) {
-				logger.error(`Error reporting to remote endpoint: ${error}`);
 			}
+
+			await saveCache(tagCache);
+			tagCache = new Map(); // free up memory
+			logger.info(
+				`Catalog webhook processed ${totalProcessed} changed out of ${totalEntities} entities`,
+			);
+		} catch (error) {
+			logger.error(`Error in processEntities: ${error}`);
 		} finally {
 			isProcessing = false;
 		}

@@ -8,7 +8,7 @@ This plugin enables your Backstage instance to periodically send catalog entity 
 - Sends updated entities to a configurable remote endpoint
 - Uses ETags to efficiently track changes and minimize data transfer
 - Supports a secret key for webhook payload validation
-- Configurable update interval
+- Configurable update interval and batch size
 
 ## Installation
 
@@ -40,6 +40,7 @@ To install this plugin in your Backstage instance, follow these steps:
        remoteEndpoint: 'https://your-remote-endpoint.com/webhook'
        intervalMinutes: 10  # Optional, defaults to 10 if not specified
        secret: 'your-secret-key'  # Optional, but recommended for security
+       batchSize: 500  # Optional, defaults to 500 if not specified
    ```
 
    Replace `https://your-remote-endpoint.com/webhook` with the actual URL where you want to send catalog updates, and `your-secret-key` with a secure secret of your choice.
@@ -51,6 +52,7 @@ The plugin supports the following configuration options:
 - `catalog.webhook.remoteEndpoint`: (Required) The URL of the remote endpoint where catalog updates will be sent.
 - `catalog.webhook.intervalMinutes`: (Optional) The interval in minutes between each update check. Defaults to 10 minutes if not specified.
 - `catalog.webhook.secret`: (Optional) A secret key that will be sent with the webhook payload for validation by the receiving server. If not provided, the webhook will function without a secret.
+- `catalog.webhook.batchSize`: (Optional) The number of entities to process in each batch. Defaults to 500 if not specified.
 
 Note: While the secret is optional, it's strongly recommended for security purposes. When configured, it allows the receiving server to validate the authenticity of incoming webhook payloads.
 
@@ -134,6 +136,7 @@ If you encounter any issues:
 2. Ensure that the `remoteEndpoint` is correctly configured and accessible from your Backstage instance.
 3. Verify that your Backstage instance has the necessary permissions to fetch catalog entities.
 4. If using a secret, make sure it's correctly configured in both Backstage and the receiving server.
+5. If you're experiencing performance issues or payload size errors, try adjusting the `batchSize` configuration. A smaller batch size may help if you're encountering timeouts or memory issues, while a larger batch size might improve overall processing speed for large catalogs.
 
 ## Contributing
 

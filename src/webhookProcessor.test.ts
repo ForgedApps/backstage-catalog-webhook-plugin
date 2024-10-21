@@ -57,8 +57,8 @@ describe("WebhookProcessor", () => {
 		const mockCatalogClient = {
 			getEntities: jest.fn().mockResolvedValue({
 				items: [
-					{ metadata: { name: "entity1", etag: "etag1" } },
-					{ metadata: { name: "entity2", etag: "etag2" } },
+					{ metadata: { uid: "uid1", etag: "etag1" } },
+					{ metadata: { uid: "uid2", etag: "etag2" } },
 				],
 			}),
 		};

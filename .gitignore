@@ -2,3 +2,4 @@
 **/dist
 etagCache
 .github
+.yarn

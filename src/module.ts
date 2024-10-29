@@ -4,7 +4,7 @@ import {
 } from '@backstage/backend-plugin-api';
 import { createWebhookProcessor } from './webhookProcessor';
 
-export const catalogModuleCatalogWebhook = createBackendModule({
+export const catalogWebhookPlugin = createBackendModule({
   pluginId: 'catalog',
   moduleId: 'catalog-webhook',
   register(env) {

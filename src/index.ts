@@ -5,4 +5,4 @@
  * @packageDocumentation
  */
 
-export { catalogModuleCatalogWebhook as default } from './module';
+export { catalogWebhookPlugin as default } from './module';

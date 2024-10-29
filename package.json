@@ -1,10 +1,17 @@
 {
   "name": "@forgedapps/backstage-catalog-webhook-plugin",
   "description": "Publish a Backstage catalog to a remote webhook. Designed by Forged Apps to synchronize Backstage with Atlassian Compass, but it can be used to push your catalog to any HTTP endpoint.",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "license": "MIT",
+  "keywords": [
+    "backstage",
+    "plugin",
+    "atlassian",
+    "compass",
+    "webhook"
+  ],
   "publishConfig": {
     "access": "public",
     "main": "dist/index.cjs.js",
@@ -37,7 +44,8 @@
     "@backstage/cli": "^0.27.1",
     "@backstage/config": "^1.2.0",
     "@biomejs/biome": "1.9.3",
-    "@types/node-persist": "^3.1.8"
+    "@types/node-persist": "^3.1.8",
+    "typescript": "^5.6.3"
   },
   "files": [
     "dist"

@@ -18,7 +18,7 @@ To install this plugin in your Backstage instance, follow these steps:
 
    ```bash
    # From your Backstage root directory
-   yarn add --cwd packages/backend @backstage/plugin-catalog-backend-module-catalog-webhook
+   yarn add --cwd packages/backend @forgedapps/backstage-catalog-webhook-plugin
    ```
 
 2. Wire up the plugin to your backend:
@@ -26,7 +26,7 @@ To install this plugin in your Backstage instance, follow these steps:
    Edit your `packages/backend/src/index.ts` file and add the following:
 
    ```typescript
-   import { catalogModuleCatalogWebhook } from '@backstage/plugin-catalog-backend-module-catalog-webhook';
+   import { catalogModuleCatalogWebhook } from '@forgedapps/backstage-catalog-webhook-plugin';
 
    // In the backend builder configuration:
    backend.add(catalogModuleCatalogWebhook());

@@ -7,6 +7,7 @@ import type {
 } from "@backstage/backend-plugin-api";
 import { CatalogClient } from "@backstage/catalog-client";
 import { initCache, saveCache } from "./cache";
+import { Entity } from '@backstage/catalog-model';
 
 export const createWebhookProcessor = (
 	logger: LoggerService,
@@ -77,7 +78,7 @@ export const createWebhookProcessor = (
 			let totalEntities = 0;
 
 			for (let offset = 0; ; offset += batchSize) {
-				const entities = [];
+				const entities: Entity[] = [];
 
 				try {
 					const { items } = await catalogClient.getEntities(

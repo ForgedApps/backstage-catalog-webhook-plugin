@@ -1,11 +1,7 @@
 // The purpose of this file is to store a cache of entity etags in a file on disk.
 // This is used to determine if each entity has changed since the last time we checked.
 
-import {
-	coreServices,
-	type CacheService,
-	createBackendPlugin,
-} from "@backstage/backend-plugin-api";
+import type { CacheService } from "@backstage/backend-plugin-api";
 
 export type EtagCache = Map<string, string>;
 

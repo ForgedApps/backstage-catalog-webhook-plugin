@@ -1,60 +1,52 @@
 {
-  "name": "@forgedapps/backstage-catalog-webhook-plugin",
-  "description": "Publish a Backstage catalog to a remote webhook. Designed by Forged Apps to synchronize Backstage with Atlassian Compass, but it can be used to push your catalog to any HTTP endpoint.",
-  "version": "1.1.0",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
-  "license": "MIT",
-  "keywords": [
-    "backstage",
-    "plugin",
-    "atlassian",
-    "compass",
-    "webhook"
-  ],
-  "publishConfig": {
-    "access": "public",
-    "main": "dist/index.cjs.js",
-    "types": "dist/index.d.ts",
-    "registry": "https://registry.npmjs.org/"
-  },
-  "backstage": {
-    "role": "backend-plugin-module",
-    "pluginId": "backstage-catalog-webhook-plugin",
-    "pluginPackage": "@forgedapps/backstage-catalog-webhook-plugin"
-  },
-  "scripts": {
-    "start": "backstage-cli package start",
-    "build": "backstage-cli package build",
-    "lint": "backstage-cli package lint",
-    "test": "backstage-cli package test",
-    "clean": "backstage-cli package clean",
-    "prepack": "backstage-cli package prepack",
-    "postpack": "backstage-cli package postpack",
-    "fix": "backstage-cli repo fix --publish"
-  },
-  "dependencies": {
-    "@backstage/backend-plugin-api": "^1.0.0",
-    "@backstage/catalog-client": "^1.7.1",
-    "@backstage/catalog-model": "^1.4.0"
-  },
-  "devDependencies": {
-    "@backstage/backend-test-utils": "^1.0.0",
-    "@backstage/cli": "^0.27.1",
-    "@backstage/config": "^1.2.0",
-    "@biomejs/biome": "1.9.3",
-    "typescript": "^5.6.3"
-  },
-  "files": [
-    "dist"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/forgedapps/backstage-plugin-sync-for-compass.git",
-    "directory": "."
-  },
-  "author": {
-    "name": "Forged Apps, LLC",
-    "email": "support@forgedapps.com"
-  }
+	"name": "@forgedapps/backstage-catalog-webhook-plugin",
+	"description": "Publish a Backstage catalog to a remote webhook. Designed by Forged Apps to synchronize Backstage with Atlassian Compass, but it can be used to push your catalog to any HTTP endpoint.",
+	"version": "1.2.0",
+	"main": "src/index.ts",
+	"types": "src/index.ts",
+	"license": "MIT",
+	"keywords": ["backstage", "plugin", "atlassian", "compass", "webhook"],
+	"publishConfig": {
+		"access": "public",
+		"main": "dist/index.cjs.js",
+		"types": "dist/index.d.ts",
+		"registry": "https://registry.npmjs.org/"
+	},
+	"backstage": {
+		"role": "backend-plugin-module",
+		"pluginId": "backstage-catalog-webhook-plugin",
+		"pluginPackage": "@forgedapps/backstage-catalog-webhook-plugin"
+	},
+	"scripts": {
+		"start": "backstage-cli package start",
+		"build": "backstage-cli package build",
+		"lint": "backstage-cli package lint",
+		"test": "backstage-cli package test",
+		"clean": "backstage-cli package clean",
+		"prepack": "backstage-cli package prepack",
+		"postpack": "backstage-cli package postpack",
+		"fix": "backstage-cli repo fix --publish"
+	},
+	"dependencies": {
+		"@backstage/backend-plugin-api": "^1.0.0",
+		"@backstage/catalog-client": "^1.7.1",
+		"@backstage/catalog-model": "^1.4.0"
+	},
+	"devDependencies": {
+		"@backstage/backend-test-utils": "^1.0.0",
+		"@backstage/cli": "^0.27.1",
+		"@backstage/config": "^1.2.0",
+		"@biomejs/biome": "1.9.3",
+		"typescript": "^5.6.3"
+	},
+	"files": ["dist"],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/forgedapps/backstage-plugin-sync-for-compass.git",
+		"directory": "."
+	},
+	"author": {
+		"name": "Forged Apps, LLC",
+		"email": "support@forgedapps.com"
+	}
 }

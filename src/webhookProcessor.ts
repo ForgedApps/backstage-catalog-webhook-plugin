@@ -5,17 +5,19 @@ import type {
 	DiscoveryService,
 	LoggerService,
 	RootConfigService,
+	SchedulerService,
 } from "@backstage/backend-plugin-api";
 import { CatalogClient } from "@backstage/catalog-client";
 import { initCache, saveCache } from "./cache";
 import type { Entity } from "@backstage/catalog-model";
 
 export const createWebhookProcessor = (
-	logger: LoggerService,
+	auth: AuthService,
 	cache: CacheService,
 	config: RootConfigService,
 	discovery: DiscoveryService,
-	auth: AuthService,
+	logger: LoggerService,
+	scheduler: SchedulerService,
 ) => {
 	let isProcessing = false;
 
@@ -30,21 +32,24 @@ export const createWebhookProcessor = (
 		}
 
 		const secret = config.getOptionalString("catalog.webhook.secret");
-		const interval =
+		const minutes =
 			config.getOptionalNumber("catalog.webhook.intervalMinutes") || 10;
 
 		const catalogClient = new CatalogClient({ discoveryApi: discovery });
 
 		logger.info(
-			`Catalog webhook started and reporting to ${remoteEndpoint} every ${interval} minute${
-				interval > 1 ? "s" : ""
+			`Catalog webhook started and reporting to ${remoteEndpoint} every ${minutes} minute${
+				minutes > 1 ? "s" : ""
 			}`,
 		);
 
-		setInterval(
-			() => processEntities(catalogClient, remoteEndpoint, secret),
-			interval * 60000,
-		);
+		await scheduler.scheduleTask({
+			frequency: { minutes },
+			timeout: { seconds: 30 },
+			id: "process-entities",
+			fn: async () =>
+				await processEntities(catalogClient, remoteEndpoint, secret),
+		});
 	};
 
 	const processEntities = async (

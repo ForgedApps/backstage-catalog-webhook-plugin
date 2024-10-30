@@ -17,13 +17,15 @@ describe("WebhookProcessor", () => {
 		const mockConfig = new ConfigReader({});
 		const mockLogger = mockServices.logger.mock();
 		const mockCache = mockServices.cache.mock();
+		const mockScheduler = mockServices.scheduler.mock();
 
 		const processor = createWebhookProcessor(
-			mockLogger,
+			{} as AuthService,
 			mockCache,
 			mockConfig,
 			{} as DiscoveryService,
-			{} as AuthService,
+			mockLogger,
+			mockScheduler,
 		);
 
 		await processor.start();
@@ -34,6 +36,13 @@ describe("WebhookProcessor", () => {
 	});
 
 	it("should start processing when properly configured", async () => {
+		const mockAuth = {
+			getPluginRequestToken: jest.fn().mockResolvedValue("test-token"),
+			getOwnServiceCredentials: jest.fn().mockResolvedValue({}),
+		};
+
+		const mockCache = mockServices.cache.mock();
+
 		const mockConfig = new ConfigReader({
 			catalog: {
 				webhook: {
@@ -44,19 +53,14 @@ describe("WebhookProcessor", () => {
 			},
 		});
 
-		const mockLogger = mockServices.logger.mock();
-
-		const mockCache = mockServices.cache.mock();
-
 		const mockDiscovery: DiscoveryService = {
 			getBaseUrl: jest.fn().mockResolvedValue("http://localhost:7007"),
 			getExternalBaseUrl: jest.fn(),
 		};
 
-		const mockAuth = {
-			getPluginRequestToken: jest.fn().mockResolvedValue("test-token"),
-			getOwnServiceCredentials: jest.fn().mockResolvedValue({}),
-		};
+		const mockLogger = mockServices.logger.mock();
+
+		const mockScheduler = mockServices.scheduler.mock();
 
 		const mockCatalogClient = {
 			getEntities: jest.fn().mockResolvedValue({
@@ -74,11 +78,12 @@ describe("WebhookProcessor", () => {
 		});
 
 		const processor = createWebhookProcessor(
-			mockLogger,
+			mockAuth as unknown as AuthService,
 			mockCache,
 			mockConfig,
 			mockDiscovery,
-			mockAuth as unknown as AuthService,
+			mockLogger,
+			mockScheduler,
 		);
 
 		await processor.start();

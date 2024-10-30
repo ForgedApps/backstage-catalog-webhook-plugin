@@ -10,19 +10,21 @@ export const catalogWebhookPlugin = createBackendModule({
 	register(env) {
 		env.registerInit({
 			deps: {
-				logger: coreServices.logger,
+				auth: coreServices.auth,
 				cache: coreServices.cache,
 				config: coreServices.rootConfig,
 				discovery: coreServices.discovery,
-				auth: coreServices.auth,
+				logger: coreServices.logger,
+				scheduler: coreServices.scheduler,
 			},
-			async init({ logger, cache, config, discovery, auth }) {
+			async init({ auth, cache, config, discovery, logger, scheduler }) {
 				const processor = createWebhookProcessor(
-					logger,
+					auth,
 					cache,
 					config,
 					discovery,
-					auth,
+					logger,
+					scheduler,
 				);
 				await processor.start();
 			},

@@ -16,9 +16,11 @@ describe("WebhookProcessor", () => {
 	it("should not start processing when remoteEndpoint is not configured", async () => {
 		const mockConfig = new ConfigReader({});
 		const mockLogger = mockServices.logger.mock();
+		const mockCache = mockServices.cache.mock();
 
 		const processor = createWebhookProcessor(
 			mockLogger,
+			mockCache,
 			mockConfig,
 			{} as DiscoveryService,
 			{} as AuthService,
@@ -43,6 +45,8 @@ describe("WebhookProcessor", () => {
 		});
 
 		const mockLogger = mockServices.logger.mock();
+
+		const mockCache = mockServices.cache.mock();
 
 		const mockDiscovery: DiscoveryService = {
 			getBaseUrl: jest.fn().mockResolvedValue("http://localhost:7007"),
@@ -71,6 +75,7 @@ describe("WebhookProcessor", () => {
 
 		const processor = createWebhookProcessor(
 			mockLogger,
+			mockCache,
 			mockConfig,
 			mockDiscovery,
 			mockAuth as unknown as AuthService,
@@ -95,6 +100,6 @@ describe("WebhookProcessor", () => {
 			expect.any(Object),
 		);
 
-		await cleanupCache();
+		await cleanupCache(mockCache);
 	});
 });

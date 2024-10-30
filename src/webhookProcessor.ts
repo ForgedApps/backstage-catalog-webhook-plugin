@@ -1,16 +1,18 @@
 import crypto from "node:crypto";
 import type {
 	AuthService,
+	CacheService,
 	DiscoveryService,
 	LoggerService,
 	RootConfigService,
 } from "@backstage/backend-plugin-api";
 import { CatalogClient } from "@backstage/catalog-client";
 import { initCache, saveCache } from "./cache";
-import { Entity } from '@backstage/catalog-model';
+import type { Entity } from "@backstage/catalog-model";
 
 export const createWebhookProcessor = (
 	logger: LoggerService,
+	cache: CacheService,
 	config: RootConfigService,
 	discovery: DiscoveryService,
 	auth: AuthService,
@@ -70,7 +72,7 @@ export const createWebhookProcessor = (
 			}
 
 			// load cache into memory for processing
-			let tagCache = await initCache();
+			let tagCache = await initCache(cache);
 
 			const batchSize =
 				config.getOptionalNumber("catalog.webhook.batchSize") || 500;
@@ -142,7 +144,7 @@ export const createWebhookProcessor = (
 				}
 			}
 
-			await saveCache(tagCache);
+			await saveCache(tagCache, cache);
 			tagCache = new Map(); // free up memory
 			logger.info(
 				`Catalog webhook processed ${totalProcessed} changed out of ${totalEntities} entities`,

@@ -79,17 +79,19 @@ export const createWebhookProcessor = (
       // load cache into memory for processing
       let tagCache = await initCache(cache)
 
-      const batchSize =
-        config.getOptionalNumber('catalog.webhook.batchSize') || 100
+      const entityRequestSize =
+        config.getOptionalNumber('catalog.webhook.entityRequestSize') || 500
+      const entitySendSize =
+        config.getOptionalNumber('catalog.webhook.entitySendSize') || 100
       let totalProcessed = 0
       let totalEntities = 0
 
-      for (let offset = 0; ; offset += batchSize) {
+      for (let offset = 0; ; offset += entityRequestSize) {
         const entities: Entity[] = []
 
         try {
           const { items } = await catalogClient.getEntities(
-            { limit: batchSize, offset },
+            { limit: entityRequestSize, offset },
             token
           )
 
@@ -112,37 +114,40 @@ export const createWebhookProcessor = (
           }
 
           if (entities.length > 0) {
-            const payload = JSON.stringify({ entities })
+            for (let i = 0; i < entities.length; i += entitySendSize) {
+              const batch = entities.slice(i, i + entitySendSize)
+              const payload = JSON.stringify({ entities: batch })
 
-            const headers: Record<string, string> = {
-              'Content-Type': 'application/json'
+              const headers: Record<string, string> = {
+                'Content-Type': 'application/json'
+              }
+
+              if (secret) {
+                const signature = crypto
+                  .createHmac('sha256', secret)
+                  .update(payload)
+                  .digest('hex')
+                headers['x-hub-signature-256'] = `sha256=${signature}`
+              }
+
+              const response = await fetch(remoteEndpoint, {
+                method: 'POST',
+                headers,
+                body: payload
+              })
+
+              if (!response.ok) {
+                const body = response ? await response.text() : ''
+                throw Error(
+                  `Failed to post catalog to remote endpoint: ${response.statusText} ${body}`
+                )
+              }
+
+              totalProcessed += batch.length
             }
-
-            if (secret) {
-              const signature = crypto
-                .createHmac('sha256', secret)
-                .update(payload)
-                .digest('hex')
-              headers['x-hub-signature-256'] = `sha256=${signature}`
-            }
-
-            const response = await fetch(remoteEndpoint, {
-              method: 'POST',
-              headers,
-              body: payload
-            })
-
-            if (!response.ok) {
-              const body = response ? await response.text() : ''
-              throw Error(
-                `Failed to post catalog to remote endpoint: ${response.statusText} ${body}`
-              )
-            }
-
-            totalProcessed += entities.length
           }
 
-          if (items.length < batchSize) break
+          if (items.length < entityRequestSize) break
         } catch (error) {
           logger.error(`Error processing entities: ${error}`)
           break

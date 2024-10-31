@@ -16,9 +16,9 @@ To install this plugin in your Backstage instance, follow these steps:
 
 1. Install the plugin package in your Backstage backend:
 
-   ```bash
-   # From your Backstage root directory
-   yarn add --cwd packages/backend @forgedapps/backstage-catalog-webhook-plugin
+   ###### From your Backstage root directory:
+   ```bash   
+   yarn --cwd packages/backend add @forgedapps/backstage-catalog-webhook-plugin
    ```
 
 2. Wire up the plugin to your backend:
@@ -40,7 +40,7 @@ To install this plugin in your Backstage instance, follow these steps:
        remoteEndpoint: 'https://your-remote-endpoint.com/webhook'
        intervalMinutes: 10  # Optional, defaults to 10 if not specified
        secret: 'your-secret-key'  # Optional, but recommended for security
-       batchSize: 500  # Optional, defaults to 500 if not specified
+       batchSize: 100  # Optional, defaults to 100 if not specified
    ```
 
    Replace `https://your-remote-endpoint.com/webhook` with the actual URL where you want to send catalog updates, and `your-secret-key` with a secure secret of your choice.
@@ -52,7 +52,7 @@ The plugin supports the following configuration options:
 - `catalog.webhook.remoteEndpoint`: (Required) The URL of the remote endpoint where catalog updates will be sent.
 - `catalog.webhook.intervalMinutes`: (Optional) The interval in minutes between each update check. Defaults to 10 minutes if not specified.
 - `catalog.webhook.secret`: (Optional) A secret key that will be sent with the webhook payload for validation by the receiving server. If not provided, the webhook will function without a secret.
-- `catalog.webhook.batchSize`: (Optional) The number of entities to process in each batch. Defaults to 500 if not specified.
+- `catalog.webhook.batchSize`: (Optional) The number of entities to process in each batch. Defaults to 100 if not specified.
 
 Note: While the secret is optional, it's strongly recommended for security purposes. When configured, it allows the receiving server to validate the authenticity of incoming webhook payloads.
 

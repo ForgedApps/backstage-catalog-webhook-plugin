@@ -116,7 +116,14 @@ export const createWebhookProcessor = (
           if (entities.length > 0) {
             for (let i = 0; i < entities.length; i += entitySendSize) {
               const batch = entities.slice(i, i + entitySendSize)
-              const payload = JSON.stringify({ entities: batch })
+              const isFinalBatch =
+                i + entitySendSize >= entities.length &&
+                items.length < entityRequestSize
+
+              const payload = JSON.stringify({
+                entities: batch,
+                isFinalBatch
+              })
 
               const headers: Record<string, string> = {
                 'Content-Type': 'application/json'

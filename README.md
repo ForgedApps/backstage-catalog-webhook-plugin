@@ -77,6 +77,7 @@ The webhook payload will be sent as a POST request with the following structure:
 ```json
 {
   "entities": [...]
+  "isFinalBatch": true when all entities have been sent, false otherwise
 }
 ```
 

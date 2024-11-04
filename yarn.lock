@@ -3539,8 +3539,6 @@ __metadata:
     "@backstage/cli": "npm:^0.27.1"
     "@backstage/config": "npm:^1.2.0"
     "@biomejs/biome": "npm:1.9.3"
-    "@types/node-persist": "npm:^3.1.8"
-    node-persist: "npm:^4.0.3"
     typescript: "npm:^5.6.3"
   languageName: unknown
   linkType: soft
@@ -6300,15 +6298,6 @@ __metadata:
   dependencies:
     "@types/node": "npm:*"
   checksum: 10c0/3d7d23ca0ba38ac0cf74028393bd70f31169ab9aba43f21deb787840170d307d662644bac07287495effe2812ddd7ac8a14dbd43f16c2936bbb06312e96fc3b9
-  languageName: node
-  linkType: hard
-
-"@types/node-persist@npm:^3.1.8":
-  version: 3.1.8
-  resolution: "@types/node-persist@npm:3.1.8"
-  dependencies:
-    "@types/node": "npm:*"
-  checksum: 10c0/38bef35fa7d51ce335e3d80331249f9e112ce181980252a170b25c9145ebc02bcde4e6cf5e613b9a7b648ab97c59bd6379e6cfb93d44b7ccab91984f244ad93b
   languageName: node
   linkType: hard
 
@@ -15060,13 +15049,6 @@ __metadata:
     util: "npm:^0.11.0"
     vm-browserify: "npm:^1.0.1"
   checksum: 10c0/0e05321a6396408903ed642231d2bca7dd96492d074c7af161ba06a63c95378bd3de50b4105eccbbc02d93ba3da69f0ff5e624bc2a8c92ca462ceb6a403e7986
-  languageName: node
-  linkType: hard
-
-"node-persist@npm:^4.0.3":
-  version: 4.0.3
-  resolution: "node-persist@npm:4.0.3"
-  checksum: 10c0/7386ef031de4c1ba9f0d044b490e6d8e3feae7dc0ad3b4aa44ef95fc890261c9e8e881a7c412fa222c6dcc23c90825622e98dade72aa77354ac80db076ab4e3b
   languageName: node
   linkType: hard
 

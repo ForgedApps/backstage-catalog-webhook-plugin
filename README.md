@@ -76,8 +76,9 @@ The webhook payload will be sent as a POST request with the following structure:
 
 ```json
 {
+  "batchId": <Date.now() when the batch started processing, consistent until isFinalBatch is true>,
   "entities": [...]
-  "isFinalBatch": true when all entities have been sent, false otherwise
+  "isFinalBatch": <true when all entities have been sent, false otherwise>
 }
 ```
 

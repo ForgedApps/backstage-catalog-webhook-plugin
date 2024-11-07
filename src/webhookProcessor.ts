@@ -112,8 +112,6 @@ export const createWebhookProcessor = (
         return
       }
 
-      const batchId = Date.now()
-
       // load cache into memory for processing
       let tagCache = await initCache(cache)
 
@@ -151,37 +149,23 @@ export const createWebhookProcessor = (
           }
 
           // Send batches of changed entities
-          if (items.length === 0 && offset > 0) {
-            // This is the rare case where the last batch was exactly equal to the entityRequestSize
+          for (let i = 0; i < entities.length; i += entitySendSize) {
+            const batchId = Date.now()
+            const batch = entities.slice(i, i + entitySendSize)
+            const isLastBatch = i + entitySendSize >= entities.length
+            const isFinalBatch = items.length < entityRequestSize && isLastBatch
+
             await sendWebhookRequest(
               remoteEndpoint,
               {
                 batchId,
-                entities: [],
-                isFinalBatch: true
+                entities: batch,
+                isFinalBatch
               },
               secret
             )
-          } else {
-            // Send batches of changed entities
-            for (let i = 0; i < entities.length; i += entitySendSize) {
-              const batch = entities.slice(i, i + entitySendSize)
-              const isLastBatch = i + entitySendSize >= entities.length
-              const isFinalBatch =
-                items.length < entityRequestSize && isLastBatch
 
-              await sendWebhookRequest(
-                remoteEndpoint,
-                {
-                  batchId,
-                  entities: batch,
-                  isFinalBatch
-                },
-                secret
-              )
-
-              totalProcessed += batch.length
-            }
+            totalProcessed += batch.length
           }
 
           if (items.length < entityRequestSize) break

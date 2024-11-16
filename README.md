@@ -2,6 +2,8 @@
 
 This plugin enables your Backstage instance to periodically send catalog entity updates to a remote endpoint. It's useful for keeping external systems in sync with your Backstage catalog.
 
+This plugin has been reviewed by Spotify and listed at [https://backstage.io/plugins](https://backstage.io/plugins).
+
 ## Features
 
 - Periodically checks for changes in your Backstage catalog
@@ -9,7 +11,7 @@ This plugin enables your Backstage instance to periodically send catalog entity 
 - Uses ETags to efficiently track changes and minimize data transfer
 - Supports a secret key for webhook payload validation
 - Configurable update interval and entity request/send size
-
+- Cache reset functionality to force a full resync of all entities
 ## Installation
 
 To install this plugin in your Backstage instance, follow these steps:
@@ -70,15 +72,26 @@ The plugin will:
 4. Include the configured secret in the webhook payload for security (if provided)
 5. Log information about its operations, including any errors encountered
 
+### Cache Reset Functionality
+
+The plugin includes a cache reset feature that can be triggered by the remote server. This is useful for troubleshooting scenarios where you need to force a full resync of all entities without restarting your Backstage instance.
+
+Before checking Backstage for changed entities, it makes a request to the webhook endpoint with the `resetCache` query parameter. If the remote server responds with `true`, the plugin will clear its internal cache before the run, sending all entities rather than only those that have changed.
+
+This feature is particularly helpful when:
+- The remote system has lost sync with Backstage
+- You need to rebuild the remote system's data
+- You're debugging entity synchronization issues
+
 ### Webhook Payload and Validation
 
 The webhook payload will be sent as a POST request with the following structure:
 
 ```json
 {
-  "batchId": <Date.now() when the batch started processing, consistent until isFinalBatch is true>,
-  "entities": [...]
-  "isFinalBatch": <true when all entities have been sent, false otherwise>
+  "batchId": // Date.now() when the batch started processing, consistent until isFinalBatch is true,
+  "entities": // [...Backstage entities]
+  "isFinalBatch": // true when all entities have been sent, false otherwise
 }
 ```
 

@@ -5,7 +5,7 @@ import type {
 import { mockServices } from '@backstage/backend-test-utils'
 import { CatalogClient } from '@backstage/catalog-client'
 import { ConfigReader } from '@backstage/config'
-import { cleanupCache } from './cache'
+import { resetCache } from './cache'
 import { createWebhookProcessor } from './webhookProcessor'
 
 jest.mock('@backstage/catalog-client')
@@ -104,7 +104,7 @@ describe('WebhookProcessor', () => {
       expect.any(Object)
     )
 
-    await cleanupCache(mockCache)
+    await resetCache(mockCache)
   })
 
   it('should correctly handle batching and set isFinalBatch flag', async () => {
@@ -291,5 +291,64 @@ describe('WebhookProcessor', () => {
       entities: [],
       isFinalBatch: true
     })
+  })
+
+  it('should reset cache when processing fails', async () => {
+    const mockAuth = {
+      getPluginRequestToken: jest.fn().mockResolvedValue('test-token'),
+      getOwnServiceCredentials: jest.fn().mockResolvedValue({})
+    }
+
+    const mockCache = mockServices.cache.mock()
+    const mockConfig = new ConfigReader({
+      catalog: {
+        webhook: {
+          remoteEndpoint: 'https://example.com/webhook',
+          secret: 'test-secret',
+          intervalMinutes: 1
+        }
+      }
+    })
+
+    const mockDiscovery: DiscoveryService = {
+      getBaseUrl: jest.fn().mockResolvedValue('http://localhost:7007'),
+      getExternalBaseUrl: jest.fn()
+    }
+
+    const mockLogger = mockServices.logger.mock()
+    const mockScheduler = mockServices.scheduler.mock()
+
+    // Mock fetch to simulate a failure
+    const fetchMock = jest.fn().mockResolvedValue({ ok: false, status: 500 })
+    global.fetch = fetchMock
+
+    const mockCatalogClient = {
+      getEntities: jest.fn().mockResolvedValue({
+        items: [{ metadata: { uid: 'uid1', etag: 'etag1' } }]
+      })
+    }
+    ;(CatalogClient as jest.Mock).mockImplementation(() => mockCatalogClient)
+
+    const processor = createWebhookProcessor(
+      mockAuth as unknown as AuthService,
+      mockCache,
+      mockConfig,
+      mockDiscovery,
+      mockLogger,
+      mockScheduler
+    )
+
+    await processor.processEntities(
+      mockCatalogClient as unknown as CatalogClient,
+      'https://example.com/webhook',
+      'test-secret'
+    )
+
+    // Verify that the cache was reset
+    expect(mockCache.delete).toHaveBeenCalledWith('catalog-webhook-etags')
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to send entities to webhook'),
+      expect.any(Error)
+    )
   })
 })

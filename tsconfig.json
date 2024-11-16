@@ -9,6 +9,6 @@
   ],
   "compilerOptions": {
     "outDir": "dist-types",
-    "rootDir": ".",
+    "rootDir": "."
   }
 }

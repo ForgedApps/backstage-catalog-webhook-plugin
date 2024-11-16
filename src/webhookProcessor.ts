@@ -9,7 +9,7 @@ import type {
 } from '@backstage/backend-plugin-api'
 import { CatalogClient } from '@backstage/catalog-client'
 import type { Entity } from '@backstage/catalog-model'
-import { initCache, saveCache } from './cache'
+import { initCache, resetCache, saveCache } from './cache'
 
 export const createWebhookProcessor = (
   auth: AuthService,
@@ -58,7 +58,7 @@ export const createWebhookProcessor = (
   }
 
   const start = async (): Promise<void> => {
-    const remoteEndpoint = config.getOptionalString(
+    let remoteEndpoint = config.getOptionalString(
       'catalog.webhook.remoteEndpoint'
     )
 
@@ -66,6 +66,9 @@ export const createWebhookProcessor = (
       logger.warn('Catalog webhook not configured, skipping')
       return
     }
+
+    if (remoteEndpoint.endsWith('/'))
+      remoteEndpoint = remoteEndpoint.slice(0, -1)
 
     const secret = config.getOptionalString('catalog.webhook.secret')
     const minutes =
@@ -88,6 +91,40 @@ export const createWebhookProcessor = (
     })
   }
 
+  const checkCacheReset = async (
+    remoteEndpoint: string,
+    logger: LoggerService,
+    secret?: string
+  ): Promise<void> => {
+    try {
+      const response = await fetch(`${remoteEndpoint}?resetCache`, {
+        method: 'GET',
+        headers: secret
+          ? {
+              'x-hub-signature-256': `sha256=${crypto
+                .createHmac('sha256', secret)
+                .update('')
+                .digest('hex')}`
+            }
+          : {}
+      })
+
+      if (response.ok) {
+        const shouldReset = await response.json()
+        console.log('shouldReset:', shouldReset)
+        if (shouldReset) {
+          logger.info('Received cache reset signal, clearing local cache')
+          await resetCache(cache)
+        }
+        return shouldReset
+      }
+
+      logger.warn(`Failed to check cache reset status: ${response.statusText}`)
+    } catch (error) {
+      logger.warn(`Error checking cache reset status: ${error}`)
+    }
+  }
+
   const processEntities = async (
     catalogClient: CatalogClient,
     remoteEndpoint: string,
@@ -101,6 +138,9 @@ export const createWebhookProcessor = (
     isProcessing = true
 
     try {
+      // Check for signal to clear cache
+      await checkCacheReset(remoteEndpoint, logger, secret)
+
       // get Auth token for catalog request
       const token = await auth.getPluginRequestToken({
         onBehalfOf: await auth.getOwnServiceCredentials(),

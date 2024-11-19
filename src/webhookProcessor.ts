@@ -111,7 +111,7 @@ export const createWebhookProcessor = (
 
       if (response.ok) {
         const shouldReset = await response.json()
-        console.log('shouldReset:', shouldReset)
+
         if (shouldReset) {
           logger.info('Received cache reset signal, clearing local cache')
           await resetCache(cache)

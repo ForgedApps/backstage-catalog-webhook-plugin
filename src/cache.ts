@@ -5,19 +5,22 @@ import type { CacheService } from '@backstage/backend-plugin-api'
 
 export type EtagCache = Map<string, string>
 
-export const initCache = async (cache: CacheService): Promise<EtagCache> => {
-  const cachedMap = await cache.get('etagMap')
-  return new Map(Object.entries(cachedMap || {}))
+const CACHE_KEY = 'catalog-webhook-etags'
+
+export const initCache = async (
+  cache: CacheService
+): Promise<Map<string, string>> => {
+  const stored = await cache.get<Record<string, string>>(CACHE_KEY)
+  return new Map(stored ? Object.entries(stored) : [])
 }
 
 export const saveCache = async (
-  etagCache: EtagCache,
+  tagCache: Map<string, string>,
   cache: CacheService
 ): Promise<void> => {
-  const tagsObject = Object.fromEntries(etagCache)
-  await cache.set('etagMap', tagsObject)
+  await cache.set(CACHE_KEY, Object.fromEntries(tagCache))
 }
 
 export const resetCache = async (cache: CacheService): Promise<void> => {
-  await cache.delete('etagMap')
+  await cache.delete(CACHE_KEY)
 }

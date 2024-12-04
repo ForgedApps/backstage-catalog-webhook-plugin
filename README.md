@@ -11,7 +11,9 @@ This plugin has been reviewed by Spotify and listed at [https://backstage.io/plu
 - Uses ETags to efficiently track changes and minimize data transfer
 - Supports a secret key for webhook payload validation
 - Configurable update interval and entity request/send size
+- Ability to filter entities before Backstage catalog is queried
 - Cache reset functionality to force a full resync of all entities
+
 ## Installation
 
 To install this plugin in your Backstage instance, follow these steps:
@@ -43,10 +45,22 @@ To install this plugin in your Backstage instance, follow these steps:
        intervalMinutes: 10  # Optional, defaults to 10 if not specified
        secret: 'your-secret-key'  # Optional, but recommended for security
        entityRequestSize: 500  # Optional, defaults to 500 if not specified
-       entitySendSize: 100  # Optional, defaults to 100 if not specified
+       entitySendSize: 50  # Optional, defaults to 50 if not specified
+       entityFilter: # Optional, defaults to all entities if not specified
+         - kind: ['Component', 'API'] # OR...
+         - metadata.name: ['my-component', 'my-api']
    ```
 
-   Replace `https://your-remote-endpoint.com/webhook` with the actual URL where you want to send catalog updates, and `your-secret-key` with a secure secret of your choice.
+4. Optionally, you can configure the remote webhook endpoint to respond to a `config` query parameter, which will allow it to send additional configuration to the plugin. This can be used to signal the plugin to reset its cache, apply filters before sending entities, or other behaviors in the future. The response should be a JSON object with the following properties:
+   
+   ```ts
+   {
+     "resetCache": boolean // (Optional) If true, will signal the plugin to clear its cache before sending entities.
+     "entityFilter": EntityFilterQuery // (Optional) An array of entity filters to apply when retrieving entities from Backstage. This can be used to limit the entities that are retrieved from the catalog each interval.
+   }
+   ```
+   
+   The GET request `https://your-remote-endpoint.com/webhook?config` is sent to the remote endpoint once each interval prior to processing entities.
 
 ## Configuration
 
@@ -57,6 +71,7 @@ The plugin supports the following configuration options:
 - `catalog.webhook.secret`: (Optional) A secret key that will be sent with the webhook payload for validation by the receiving server. If not provided, the webhook will function without a secret.
 - `catalog.webhook.entityRequestSize`: (Optional) The number of entities to retrieve from Backstage per request. Defaults to 500 (max).
 - `catalog.webhook.entitySendSize`: (Optional) The number of entities to send to the remote endpoint at any one time. This is an important number as payloads can grow too large for the remote server to handle due to the amount of data stored for each entity in Backstage. Defaults to 100.
+- `catalog.webhook.entityFilter`: (Optional) An array of entity filters to apply when retrieving entities from Backstage. Note that multiple filters are considered OR, not AND. This can be used to limit the entities that are retrieved from the catalog each interval. This value is overridden by the `config.entityFilter` value if it is received from the remote endpoint.
 
 Note: While the secret is optional, it's strongly recommended for security purposes. When configured, it allows the receiving server to validate the authenticity of incoming webhook payloads.
 

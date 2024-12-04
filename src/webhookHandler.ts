@@ -7,11 +7,19 @@ import type {
   RootConfigService,
   SchedulerService
 } from '@backstage/backend-plugin-api'
-import { CatalogClient } from '@backstage/catalog-client'
+import {
+  CatalogClient,
+  type EntityFilterQuery
+} from '@backstage/catalog-client'
 import type { Entity } from '@backstage/catalog-model'
 import { initCache, resetCache, saveCache } from './cache'
 
-export const createWebhookProcessor = (
+type RemoteConfig = Partial<{
+  resetCache: boolean
+  entityFilter: string
+}>
+
+export const createWebhookHandler = (
   auth: AuthService,
   cache: CacheService,
   config: RootConfigService,
@@ -91,13 +99,14 @@ export const createWebhookProcessor = (
     })
   }
 
-  const checkCacheReset = async (
+  const checkRemoteConfig = async (
     remoteEndpoint: string,
     logger: LoggerService,
     secret?: string
-  ): Promise<void> => {
+  ): Promise<RemoteConfig> => {
+    let remoteConfig: RemoteConfig = {}
     try {
-      const response = await fetch(`${remoteEndpoint}?resetCache`, {
+      const response = await fetch(`${remoteEndpoint}?config`, {
         method: 'GET',
         headers: secret
           ? {
@@ -110,19 +119,24 @@ export const createWebhookProcessor = (
       })
 
       if (response.ok) {
-        const shouldReset = await response.json()
+        remoteConfig = await response.json()
 
-        if (shouldReset) {
+        if (remoteConfig.resetCache) {
           logger.info('Received cache reset signal, clearing local cache')
           await resetCache(cache)
         }
-        return shouldReset
-      }
 
-      logger.warn(`Failed to check cache reset status: ${response.statusText}`)
+        if (remoteConfig.entityFilter) {
+          logger.info(
+            `Applying received entity filter: ${remoteConfig.entityFilter}`
+          )
+        }
+      } else logger.warn(`Failed to get remote config: ${response.statusText}`)
     } catch (error) {
-      logger.warn(`Error checking cache reset status: ${error}`)
+      logger.warn(`Error checking remote config: ${error}`)
     }
+
+    return remoteConfig
   }
 
   const processEntities = async (
@@ -138,8 +152,12 @@ export const createWebhookProcessor = (
     isProcessing = true
 
     try {
-      // Check for signal to clear cache
-      await checkCacheReset(remoteEndpoint, logger, secret)
+      // Pull remote config
+      const remoteConfig = await checkRemoteConfig(
+        remoteEndpoint,
+        logger,
+        secret
+      )
 
       // get Auth token for catalog request
       const token = await auth.getPluginRequestToken({
@@ -158,14 +176,24 @@ export const createWebhookProcessor = (
       const entityRequestSize =
         config.getOptionalNumber('catalog.webhook.entityRequestSize') || 500
       const entitySendSize =
-        config.getOptionalNumber('catalog.webhook.entitySendSize') || 100
+        config.getOptionalNumber('catalog.webhook.entitySendSize') || 50
+      const entityFilter: EntityFilterQuery = remoteConfig?.entityFilter
+        ? JSON.parse(remoteConfig.entityFilter)
+        : config
+            .getOptionalConfigArray('catalog.webhook.entityFilter')
+            ?.map(filter => filter.get()) || []
+
       let totalProcessed = 0
       let totalEntities = 0
 
       for (let offset = 0; ; offset += entityRequestSize) {
         try {
           const { items } = await catalogClient.getEntities(
-            { limit: entityRequestSize, offset },
+            {
+              filter: entityFilter,
+              limit: entityRequestSize,
+              offset
+            },
             token
           )
 

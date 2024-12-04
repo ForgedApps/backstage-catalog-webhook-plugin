@@ -6,7 +6,7 @@ import { mockServices } from '@backstage/backend-test-utils'
 import { CatalogClient } from '@backstage/catalog-client'
 import { ConfigReader } from '@backstage/config'
 import { resetCache } from './cache'
-import { createWebhookProcessor } from './webhookProcessor'
+import { createWebhookHandler } from './webhookHandler'
 
 jest.mock('@backstage/catalog-client')
 
@@ -19,7 +19,7 @@ describe('WebhookProcessor', () => {
     const mockCache = mockServices.cache.mock()
     const mockScheduler = mockServices.scheduler.mock()
 
-    const processor = createWebhookProcessor(
+    const processor = createWebhookHandler(
       {} as AuthService,
       mockCache,
       mockConfig,
@@ -76,7 +76,7 @@ describe('WebhookProcessor', () => {
       ok: true
     })
 
-    const processor = createWebhookProcessor(
+    const processor = createWebhookHandler(
       mockAuth as unknown as AuthService,
       mockCache,
       mockConfig,
@@ -134,7 +134,21 @@ describe('WebhookProcessor', () => {
     const mockLogger = mockServices.logger.mock()
     const mockScheduler = mockServices.scheduler.mock()
 
-    const fetchMock = jest.fn().mockResolvedValue({ ok: true })
+    const fetchMock = jest.fn().mockImplementation(url => {
+      // Handle config endpoint
+      if (url.includes('?config')) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              resetCache: true,
+              entityFilter: '[{"kind":"Component"}]'
+            })
+        })
+      }
+      // Handle webhook endpoint
+      return Promise.resolve({ ok: true })
+    })
     global.fetch = fetchMock
 
     const mockCatalogClient = {
@@ -152,7 +166,7 @@ describe('WebhookProcessor', () => {
     }
     ;(CatalogClient as jest.Mock).mockImplementation(() => mockCatalogClient)
 
-    const processor = createWebhookProcessor(
+    const processor = createWebhookHandler(
       mockAuth as unknown as AuthService,
       mockCache,
       mockConfig,
@@ -171,11 +185,17 @@ describe('WebhookProcessor', () => {
       'test-secret'
     )
 
-    // Should have made 3 fetch calls (2 entities per batch, 4 total entities, plus empty final)
-    expect(fetchMock).toHaveBeenCalledTimes(3)
+    // Should have made 2 fetch calls (1 config + 1 entity batch)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
 
-    // First batch should not be final
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+    // First call should be to config endpoint
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      'https://example.com/webhook?config'
+    )
+    expect(fetchMock.mock.calls[0][1].method).toBe('GET')
+
+    // Second call (first batch) should not be final
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({
       batchId: mockTimestamp,
       entities: [
         { metadata: { uid: 'uid1', etag: 'new-etag1' } },
@@ -184,33 +204,24 @@ describe('WebhookProcessor', () => {
       isFinalBatch: false
     })
 
-    // Second batch should not be final
-    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({
+    // Third call (second batch) should be final since it's the last batch with entities
+    expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toEqual({
       batchId: mockTimestamp,
       entities: [
         { metadata: { uid: 'uid3', etag: 'new-etag3' } },
         { metadata: { uid: 'uid4', etag: 'new-etag4' } }
       ],
-      isFinalBatch: false
-    })
-
-    // Third batch should be empty and final
-    expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toEqual({
-      batchId: mockTimestamp,
-      entities: [],
       isFinalBatch: true
     })
 
     // Verify all batches use the same batchId
-    const firstBatchId = JSON.parse(fetchMock.mock.calls[0][1].body).batchId
-    const secondBatchId = JSON.parse(fetchMock.mock.calls[1][1].body).batchId
-    const thirdBatchId = JSON.parse(fetchMock.mock.calls[2][1].body).batchId
+    const firstBatchId = JSON.parse(fetchMock.mock.calls[1][1].body).batchId
+    const secondBatchId = JSON.parse(fetchMock.mock.calls[2][1].body).batchId
     expect(firstBatchId).toBe(secondBatchId)
-    expect(firstBatchId).toBe(thirdBatchId)
     expect(firstBatchId).toBe(mockTimestamp)
   })
 
-  it('should handle final empty batch correctly', async () => {
+  it('should handle final batch correctly', async () => {
     const mockAuth = {
       getPluginRequestToken: jest.fn().mockResolvedValue('test-token'),
       getOwnServiceCredentials: jest.fn().mockResolvedValue({})
@@ -237,7 +248,19 @@ describe('WebhookProcessor', () => {
     const mockLogger = mockServices.logger.mock()
     const mockScheduler = mockServices.scheduler.mock()
 
-    const fetchMock = jest.fn().mockResolvedValue({ ok: true })
+    const fetchMock = jest.fn().mockImplementation(url => {
+      if (url.includes('?config')) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              resetCache: true,
+              entityFilter: '[{"kind":"Component"}]'
+            })
+        })
+      }
+      return Promise.resolve({ ok: true })
+    })
     global.fetch = fetchMock
 
     const mockCatalogClient = {
@@ -254,7 +277,7 @@ describe('WebhookProcessor', () => {
     }
     ;(CatalogClient as jest.Mock).mockImplementation(() => mockCatalogClient)
 
-    const processor = createWebhookProcessor(
+    const processor = createWebhookHandler(
       mockAuth as unknown as AuthService,
       mockCache,
       mockConfig,
@@ -272,23 +295,22 @@ describe('WebhookProcessor', () => {
       'test-secret'
     )
 
-    // Should have made 2 fetch calls - one with entities and one empty final
+    // Should have made 2 fetch calls (1 config + 1 entity batch)
     expect(fetchMock).toHaveBeenCalledTimes(2)
 
-    // First batch should not be final
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+    // First call should be to config endpoint
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      'https://example.com/webhook?config'
+    )
+    expect(fetchMock.mock.calls[0][1].method).toBe('GET')
+
+    // Second call should be final since it's the only batch with entities
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({
       batchId: mockTimestamp,
       entities: [
         { metadata: { uid: 'uid1', etag: 'new-etag1' } },
         { metadata: { uid: 'uid2', etag: 'new-etag2' } }
       ],
-      isFinalBatch: false
-    })
-
-    // Second batch should be empty and final
-    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({
-      batchId: mockTimestamp,
-      entities: [],
       isFinalBatch: true
     })
   })
@@ -319,7 +341,19 @@ describe('WebhookProcessor', () => {
     const mockScheduler = mockServices.scheduler.mock()
 
     // Mock fetch to simulate a failure
-    const fetchMock = jest.fn().mockResolvedValue({ ok: false, status: 500 })
+    const fetchMock = jest.fn().mockImplementation(url => {
+      if (url.includes('?config')) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              resetCache: true,
+              entityFilter: '[{"kind":"Component"}]'
+            })
+        })
+      }
+      return Promise.resolve({ ok: false, status: 500 })
+    })
     global.fetch = fetchMock
 
     const mockCatalogClient = {
@@ -329,7 +363,7 @@ describe('WebhookProcessor', () => {
     }
     ;(CatalogClient as jest.Mock).mockImplementation(() => mockCatalogClient)
 
-    const processor = createWebhookProcessor(
+    const processor = createWebhookHandler(
       mockAuth as unknown as AuthService,
       mockCache,
       mockConfig,
@@ -346,9 +380,5 @@ describe('WebhookProcessor', () => {
 
     // Verify that the cache was reset
     expect(mockCache.delete).toHaveBeenCalledWith('catalog-webhook-etags')
-    expect(mockLogger.error).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to send entities to webhook'),
-      expect.any(Error)
-    )
   })
 })

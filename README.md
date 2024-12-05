@@ -57,10 +57,9 @@ To install this plugin in your Backstage instance, follow these steps:
    {
      "resetCache": boolean // (Optional) If true, will signal the plugin to clear its cache before sending entities.
      "entityFilter": EntityFilterQuery // (Optional) An array of entity filters to apply when retrieving entities from Backstage. This can be used to limit the entities that are retrieved from the catalog each interval.
-     "entityLimit": number // (Optional) The maximum number of entities to send to the remote endpoint. This can be used to limit the number of entities sent to the remote endpoint each interval for testing purposes.
    }
    ```
-
+   
    The GET request `https://your-remote-endpoint.com/webhook?config` is sent to the remote endpoint once each interval prior to processing entities.
 
 ## Configuration

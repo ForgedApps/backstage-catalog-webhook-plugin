@@ -17,7 +17,6 @@ import { initCache, resetCache, saveCache } from './cache'
 type RemoteConfig = Partial<{
   resetCache: boolean
   entityFilter: string
-  entityLimit: number
 }>
 
 export const createWebhookHandler = (
@@ -132,12 +131,6 @@ export const createWebhookHandler = (
             `Applying received entity filter: ${remoteConfig.entityFilter}`
           )
         }
-
-        if (remoteConfig.entityLimit) {
-          logger.info(
-            `Applying received entity limit: ${remoteConfig.entityLimit}`
-          )
-        }
       } else logger.warn(`Failed to get remote config: ${response.statusText}`)
     } catch (error) {
       logger.warn(`Error checking remote config: ${error}`)
@@ -182,11 +175,6 @@ export const createWebhookHandler = (
 
       const entityRequestSize =
         config.getOptionalNumber('catalog.webhook.entityRequestSize') || 500
-      const limit = Math.min(
-        remoteConfig?.entityLimit || entityRequestSize,
-        entityRequestSize
-      )
-
       const entitySendSize =
         config.getOptionalNumber('catalog.webhook.entitySendSize') || 50
       const entityFilter: EntityFilterQuery = remoteConfig?.entityFilter
@@ -197,14 +185,13 @@ export const createWebhookHandler = (
 
       let totalProcessed = 0
       let totalEntities = 0
-      let isFinalBatch = false
 
-      for (let offset = 0; offset < limit; offset += limit) {
+      for (let offset = 0; ; offset += entityRequestSize) {
         try {
           const { items } = await catalogClient.getEntities(
             {
               filter: entityFilter,
-              limit,
+              limit: entityRequestSize,
               offset
             },
             token
@@ -234,7 +221,7 @@ export const createWebhookHandler = (
             const batchId = Date.now()
             const batch = entities.slice(i, i + entitySendSize)
             const isLastBatch = i + entitySendSize >= entities.length
-            isFinalBatch = items.length <= limit && isLastBatch
+            const isFinalBatch = items.length < entityRequestSize && isLastBatch
 
             await sendWebhookRequest(
               remoteEndpoint,
@@ -249,7 +236,7 @@ export const createWebhookHandler = (
             totalProcessed += batch.length
           }
 
-          if (isFinalBatch) break
+          if (items.length < entityRequestSize) break
         } catch (error) {
           logger.error(`Error processing entities: ${error}`)
           break

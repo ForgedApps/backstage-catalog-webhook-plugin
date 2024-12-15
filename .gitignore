@@ -5,3 +5,4 @@ etagCache
 .github
 .yarn
 *.tsbuildinfo
+.env

@@ -33,7 +33,7 @@
     "prepack": "backstage-cli package prepack",
     "postpack": "backstage-cli package postpack",
     "fix": "backstage-cli repo fix --publish",
-    "release": "dotenv npx release-it"
+    "release": "yarn build && dotenv npx release-it"
   },
   "dependencies": {
     "@backstage/backend-plugin-api": "^1.0.0",

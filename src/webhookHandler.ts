@@ -7,10 +7,7 @@ import type {
   RootConfigService,
   SchedulerService
 } from '@backstage/backend-plugin-api'
-import {
-  CatalogClient,
-  type EntityFilterQuery
-} from '@backstage/catalog-client'
+import { CatalogClient } from '@backstage/catalog-client'
 import type { Entity } from '@backstage/catalog-model'
 import { initCache, resetCache, saveCache } from './cache'
 
@@ -177,11 +174,25 @@ export const createWebhookHandler = (
         config.getOptionalNumber('catalog.webhook.entityRequestSize') || 500
       const entitySendSize =
         config.getOptionalNumber('catalog.webhook.entitySendSize') || 50
-      const entityFilter: EntityFilterQuery = remoteConfig?.entityFilter
+
+      // Get the allowed kinds from config
+      const allowedKinds =
+        config
+          .getOptionalConfigArray('catalog.webhook.allowedKinds')
+          ?.map(k => k.get()) || []
+
+      // Build the entity filter
+      const baseFilter = allowedKinds?.length ? [{ kind: allowedKinds }] : []
+
+      // Add any additional filters from config or remote
+      const additionalFilters = remoteConfig?.entityFilter
         ? JSON.parse(remoteConfig.entityFilter)
         : config
             .getOptionalConfigArray('catalog.webhook.entityFilter')
             ?.map(filter => filter.get()) || []
+
+      // Combine filters - allowedKinds acts as a base filter that is AND-ed with other filters
+      const entityFilter = [...baseFilter, ...additionalFilters]
 
       let totalProcessed = 0
       let totalEntities = 0

@@ -13,6 +13,7 @@ This plugin has been reviewed by Spotify and listed at [https://backstage.io/plu
 - Configurable update interval and entity request/send size
 - Ability to filter entities before Backstage catalog is queried
 - Cache reset functionality to force a full resync of all entities
+- Strict kind filtering through allowedKinds configuration
 
 ## Installation
 
@@ -46,9 +47,12 @@ To install this plugin in your Backstage instance, follow these steps:
        secret: 'your-secret-key'  # Optional, but recommended for security
        entityRequestSize: 500  # Optional, defaults to 500 if not specified
        entitySendSize: 50  # Optional, defaults to 50 if not specified
-       entityFilter: # Optional, defaults to all entities if not specified
-         - kind: ['Component', 'API'] # OR...
-         - metadata.name: ['my-component', 'my-api']
+       allowedKinds:  # Optional, strictly enforces which kinds can be processed
+         - Component
+         - API
+       entityFilter: # Optional, additional filters to apply
+         - kind: ['Component', 'API']  # Filter by kind (OR)
+         - metadata.namespace: ['my-namespace']  # Filter by namespace
    ```
 
 4. Optionally, you can configure the remote webhook endpoint to respond to a `config` query parameter, which will allow it to send additional configuration to the plugin. This can be used to signal the plugin to reset its cache, apply filters before sending entities, or other behaviors in the future. The response should be a JSON object with the following properties:
@@ -56,9 +60,10 @@ To install this plugin in your Backstage instance, follow these steps:
    ```ts
    {
      "resetCache": boolean // (Optional) If true, will signal the plugin to clear its cache before sending entities.
-     "entityFilter": EntityFilterQuery // (Optional) An array of entity filters to apply when retrieving entities from Backstage. This can be used to limit the entities that are retrieved from the catalog each interval.
+     "entityFilter": EntityFilterQuery // (Optional) An array of entity filters (case-insensitive) to apply when retrieving entities from Backstage. This can be used to limit the entities that are retrieved from the catalog each interval.
    }
    ```
+   See documentation for `EntityFilterQuery` [here](https://backstage.io/docs/reference/catalog-client.entityfilterquery/).
    
    The GET request `https://your-remote-endpoint.com/webhook?config` is sent to the remote endpoint once each interval prior to processing entities.
 
@@ -71,6 +76,7 @@ The plugin supports the following configuration options:
 - `catalog.webhook.secret`: (Optional) A secret key that will be sent with the webhook payload for validation by the receiving server. If not provided, the webhook will function without a secret.
 - `catalog.webhook.entityRequestSize`: (Optional) The number of entities to retrieve from Backstage per request. Defaults to 500 (max).
 - `catalog.webhook.entitySendSize`: (Optional) The number of entities to send to the remote endpoint at any one time. This is an important number as payloads can grow too large for the remote server to handle due to the amount of data stored for each entity in Backstage. Defaults to 100.
+- `catalog.webhook.allowedKinds`: (Optional) A list of entity kinds that are allowed to be processed. This acts as a strict filter - only entities of these kinds will be processed, regardless of any other filters. If not specified, all kinds are allowed.
 - `catalog.webhook.entityFilter`: (Optional) An array of entity filters to apply when retrieving entities from Backstage. Note that multiple filters are considered OR, not AND. This can be used to limit the entities that are retrieved from the catalog each interval. This value is overridden by the `config.entityFilter` value if it is received from the remote endpoint.
 
 Note: While the secret is optional, it's strongly recommended for security purposes. When configured, it allows the receiving server to validate the authenticity of incoming webhook payloads.
@@ -81,11 +87,45 @@ Once installed and configured, the plugin will automatically start sending catal
 
 The plugin will:
 
-1. Fetch entities from your Backstage catalog
+1. Fetch entities from your Backstage catalog (respecting allowedKinds if configured)
 2. Check for changes since the last update using ETags
 3. Send only the changed entities to the remote endpoint
 4. Include the configured secret in the webhook payload for security (if provided)
 5. Log information about its operations, including any errors encountered
+
+### Filtering Entities
+
+The plugin provides multiple layers of filtering:
+
+1. **Kind Filtering (allowedKinds)**: This is the most restrictive filter and is applied first. If configured, only entities of the specified kinds will be processed, regardless of any other filters, including kind filters in entityFilter.
+
+   ```yaml
+   catalog:
+     webhook:
+       allowedKinds:
+         - Component
+         - API
+   ```
+
+2. **Additional Filters (entityFilter)**: These filters are applied after the kind filter. You can use any valid Backstage filter here, including kind filters (though these will be further restricted by allowedKinds if it's configured).
+
+   ```yaml
+   catalog:
+     webhook:
+       allowedKinds:
+         - Component
+         - API
+         - System
+       entityFilter:
+         - kind: ['Component', 'Location']  # Further restricts to only Components, Location is ignored
+         - metadata.namespace: ['my-namespace']
+   ```
+
+   In this example:
+   - First, only Components, APIs, and Systems are allowed (due to allowedKinds)
+   - Then, among those, only Components in 'my-namespace' will be processed
+
+3. **Remote Filters**: Any filters received from the remote endpoint are combined with the above filters, with allowedKinds still being the most restrictive.
 
 ### Cache Reset Functionality
 

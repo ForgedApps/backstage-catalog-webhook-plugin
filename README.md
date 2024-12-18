@@ -13,7 +13,7 @@ This plugin has been reviewed by Spotify and listed at [https://backstage.io/plu
 - Configurable update interval and entity request/send size
 - Ability to filter entities before Backstage catalog is queried
 - Cache reset functionality to force a full resync of all entities
-- Strict kind filtering through allowedKinds configuration
+- Strict kind filtering through allow list configuration
 
 ## Installation
 
@@ -47,9 +47,8 @@ To install this plugin in your Backstage instance, follow these steps:
        secret: 'your-secret-key'  # Optional, but recommended for security
        entityRequestSize: 500  # Optional, defaults to 500 if not specified
        entitySendSize: 50  # Optional, defaults to 50 if not specified
-       allowedKinds:  # Optional, strictly enforces which kinds can be processed
-         - Component
-         - API
+       allow: # Optional, strictly enforces which kinds can be processed
+         - kind: ['api']
        entityFilter: # Optional, additional filters to apply
          - kind: ['Component', 'API']  # Filter by kind (OR)
          - metadata.namespace: ['my-namespace']  # Filter by namespace
@@ -97,14 +96,13 @@ The plugin will:
 
 The plugin provides multiple layers of filtering:
 
-1. **Kind Filtering (allowedKinds)**: This is the most restrictive filter and is applied first. If configured, only entities of the specified kinds will be processed, regardless of any other filters, including kind filters in entityFilter.
+1. **Kind Filtering (allow list)**: This is the most restrictive filter and is applied first. If configured, only entities of the specified kinds will be processed, regardless of any other filters, including kind filters in entityFilter.
 
    ```yaml
    catalog:
      webhook:
-       allowedKinds:
-         - Component
-         - API
+       allow:
+         - kind: ['component', 'api', 'system'] # Restrict to these kinds only, cannot be bypassed
    ```
 
 2. **Additional Filters (entityFilter)**: These filters are applied after the kind filter. You can use any valid Backstage filter here, including kind filters (though these will be further restricted by allowedKinds if it's configured).
@@ -112,20 +110,19 @@ The plugin provides multiple layers of filtering:
    ```yaml
    catalog:
      webhook:
-       allowedKinds:
-         - Component
-         - API
-         - System
+       allow:
+         - kind: ['component', 'api', 'system']
        entityFilter:
-         - kind: ['Component', 'Location']  # Further restricts to only Components, Location is ignored
-         - metadata.namespace: ['my-namespace']
+         - kind: ['Component', 'Location']  # Restrict to these kinds, can be bypassed by remote filters
+         - metadata.namespace: ['my-namespace'] # Note this is OR, so it will return in addition to kind matches
    ```
 
    In this example:
-   - First, only Components, APIs, and Systems are allowed (due to allowedKinds)
-   - Then, among those, only Components in 'my-namespace' will be processed
+   - First, only Components, APIs, and Systems are allowed (due to allow list)
+   - Then, filtering ensures only components, locations or entities in 'my-namespace' will be processed
+   - However, Locations are not allowed so they will not be included
 
-3. **Remote Filters**: Any filters received from the remote endpoint are combined with the above filters, with allowedKinds still being the most restrictive.
+3. **Remote Filters**: Any filters received from the remote endpoint are combined with the above filters, with allowed kinds still being the most restrictive.
 
 ### Cache Reset Functionality
 

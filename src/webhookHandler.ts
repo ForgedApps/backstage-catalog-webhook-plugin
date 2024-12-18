@@ -175,24 +175,30 @@ export const createWebhookHandler = (
       const entitySendSize =
         config.getOptionalNumber('catalog.webhook.entitySendSize') || 50
 
-      // Get the allowed kinds from config
-      const allowedKinds =
+      // Get the allowed kinds from config and restrict filters
+      const allow: { kind: string[] }[] =
         config
-          .getOptionalConfigArray('catalog.webhook.allowedKinds')
+          .getOptionalConfigArray('catalog.webhook.allow')
           ?.map(k => k.get()) || []
+      const kind = allow?.[0]?.kind
+      if (kind?.length)
+        logger.info(
+          `Catalog webhook applied allow list of ${JSON.stringify(kind)}`
+        )
 
-      // Build the entity filter
-      const baseFilter = allowedKinds?.length ? [{ kind: allowedKinds }] : []
-
-      // Add any additional filters from config or remote
-      const additionalFilters = remoteConfig?.entityFilter
+      let entityFilter = remoteConfig?.entityFilter
         ? JSON.parse(remoteConfig.entityFilter)
         : config
             .getOptionalConfigArray('catalog.webhook.entityFilter')
             ?.map(filter => filter.get()) || []
 
-      // Combine filters - allowedKinds acts as a base filter that is AND-ed with other filters
-      const entityFilter = [...baseFilter, ...additionalFilters]
+      if (kind?.length) {
+        const nonKindFilters = entityFilter.filter(
+          (filter: Record<string, string[]>) => !('kind' in filter)
+        )
+        const kindFilter = { kind }
+        entityFilter = [kindFilter, ...nonKindFilters]
+      }
 
       let totalProcessed = 0
       let totalEntities = 0

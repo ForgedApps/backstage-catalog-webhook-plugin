@@ -180,10 +180,10 @@ export const createWebhookHandler = (
         config
           .getOptionalConfigArray('catalog.webhook.allow')
           ?.map(k => k.get()) || []
-      const kind = allow?.[0]?.kind
-      if (kind?.length)
+      const allowedKinds = allow?.[0]?.kind
+      if (allowedKinds?.length)
         logger.info(
-          `Catalog webhook applied allow list of ${JSON.stringify(kind)}`
+          `Catalog webhook applied allow list of ${JSON.stringify(allowedKinds)}`
         )
 
       let entityFilter = remoteConfig?.entityFilter
@@ -192,12 +192,36 @@ export const createWebhookHandler = (
             .getOptionalConfigArray('catalog.webhook.entityFilter')
             ?.map(filter => filter.get()) || []
 
-      if (kind?.length) {
-        const nonKindFilters = entityFilter.filter(
-          (filter: Record<string, string[]>) => !('kind' in filter)
-        )
-        const kindFilter = { kind }
-        entityFilter = [kindFilter, ...nonKindFilters]
+      // If we have an allow list, enforce it while preserving other filters
+      if (allowedKinds?.length) {
+        entityFilter = entityFilter.map((filter: Record<string, string[]>) => {
+          // If this filter contains a kind property, intersect with allowed kinds
+          if ('kind' in filter) {
+            const filterKinds = Array.isArray(filter.kind)
+              ? filter.kind
+              : [filter.kind]
+
+            // Get the intersection of the filter kinds and allowed kinds
+            const allowedFilterKinds = filterKinds.filter(k =>
+              allowedKinds.includes(k)
+            )
+
+            // If there are any allowed kinds in this filter, return them with other properties
+            return allowedFilterKinds.length
+              ? { ...filter, kind: allowedFilterKinds }
+              : filter
+          }
+          return filter
+        })
+
+        // Add the allow list as a kind filter if none exists
+        if (
+          !entityFilter.some(
+            (filter: Record<string, string[]>) => 'kind' in filter
+          )
+        ) {
+          entityFilter.unshift({ kind: allowedKinds })
+        }
       }
 
       let totalProcessed = 0

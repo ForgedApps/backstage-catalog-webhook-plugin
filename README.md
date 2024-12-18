@@ -75,7 +75,7 @@ The plugin supports the following configuration options:
 - `catalog.webhook.secret`: (Optional) A secret key that will be sent with the webhook payload for validation by the receiving server. If not provided, the webhook will function without a secret.
 - `catalog.webhook.entityRequestSize`: (Optional) The number of entities to retrieve from Backstage per request. Defaults to 500 (max).
 - `catalog.webhook.entitySendSize`: (Optional) The number of entities to send to the remote endpoint at any one time. This is an important number as payloads can grow too large for the remote server to handle due to the amount of data stored for each entity in Backstage. Defaults to 100.
-- `catalog.webhook.allowedKinds`: (Optional) A list of entity kinds that are allowed to be processed. This acts as a strict filter - only entities of these kinds will be processed, regardless of any other filters. If not specified, all kinds are allowed.
+- `catalog.webhook.allow`: (Optional) A list of entity kinds that are allowed to be processed. This acts as a strict filter - only entities of these kinds will be processed, regardless of any other filters. If not specified, all kinds are allowed.
 - `catalog.webhook.entityFilter`: (Optional) An array of entity filters to apply when retrieving entities from Backstage. Note that multiple filters are considered OR, not AND. This can be used to limit the entities that are retrieved from the catalog each interval. This value is overridden by the `config.entityFilter` value if it is received from the remote endpoint.
 
 Note: While the secret is optional, it's strongly recommended for security purposes. When configured, it allows the receiving server to validate the authenticity of incoming webhook payloads.
@@ -86,7 +86,7 @@ Once installed and configured, the plugin will automatically start sending catal
 
 The plugin will:
 
-1. Fetch entities from your Backstage catalog (respecting allowedKinds if configured)
+1. Fetch entities from your Backstage catalog (respecting allowed kinds if configured)
 2. Check for changes since the last update using ETags
 3. Send only the changed entities to the remote endpoint
 4. Include the configured secret in the webhook payload for security (if provided)
@@ -105,7 +105,7 @@ The plugin provides multiple layers of filtering:
          - kind: ['component', 'api', 'system'] # Restrict to these kinds only, cannot be bypassed
    ```
 
-2. **Additional Filters (entityFilter)**: These filters are applied after the kind filter. You can use any valid Backstage filter here, including kind filters (though these will be further restricted by allowedKinds if it's configured).
+2. **Additional Filters (entityFilter)**: These filters are applied after the kind filter. You can use any valid Backstage filter here, including kind filters (though these will be further restricted by allowed kinds if it's configured).
 
    ```yaml
    catalog:

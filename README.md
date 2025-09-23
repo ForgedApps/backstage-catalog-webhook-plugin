@@ -31,10 +31,7 @@ To install this plugin in your Backstage instance, follow these steps:
    Edit your `packages/backend/src/index.ts` file and add the following:
 
    ```typescript
-   import { catalogWebhookPlugin } from '@forgedapps/backstage-catalog-webhook-plugin';
-
-   // In the backend builder configuration:
-   backend.add(catalogWebhookPlugin());
+   backend.add(import('@forgedapps/backstage-catalog-webhook-plugin'));
    ```
 
 3. Configure the plugin in your `app-config.yaml`:

@@ -185,8 +185,8 @@ describe('WebhookProcessor', () => {
       'test-secret'
     )
 
-    // Should have made 2 fetch calls (1 config + 1 entity batch)
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    // Should have made 3 fetch calls (1 config + 2 entity batches)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
 
     // First call should be to config endpoint
     expect(fetchMock.mock.calls[0][0]).toBe(

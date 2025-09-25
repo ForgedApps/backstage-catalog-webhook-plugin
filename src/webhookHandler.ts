@@ -226,6 +226,10 @@ export const createWebhookHandler = (
 
       let totalProcessed = 0
       let totalEntities = 0
+      const processingBatchId = Date.now()
+
+      // Collect all batches first, then send them with proper isFinalBatch flags
+      const allBatches: { entities: Entity[], isFromFinalIteration: boolean }[] = []
 
       for (let offset = 0; ; offset += entityRequestSize) {
         try {
@@ -257,24 +261,11 @@ export const createWebhookHandler = (
             }
           }
 
-          // Send batches of changed entities
+          // Create batches from changed entities
+          const isFromFinalIteration = items.length < entityRequestSize
           for (let i = 0; i < entities.length; i += entitySendSize) {
-            const batchId = Date.now()
             const batch = entities.slice(i, i + entitySendSize)
-            const isLastBatch = i + entitySendSize >= entities.length
-            const isFinalBatch = items.length < entityRequestSize && isLastBatch
-
-            await sendWebhookRequest(
-              remoteEndpoint,
-              {
-                batchId,
-                entities: batch,
-                isFinalBatch
-              },
-              secret
-            )
-
-            totalProcessed += batch.length
+            allBatches.push({ entities: batch, isFromFinalIteration })
           }
 
           if (items.length < entityRequestSize) break
@@ -282,6 +273,37 @@ export const createWebhookHandler = (
           logger.error(`Error processing entities: ${error}`)
           break
         }
+      }
+
+      // Send all batches, marking only the last one as final
+      if (allBatches.length > 0) {
+        for (let i = 0; i < allBatches.length; i++) {
+          const { entities } = allBatches[i]
+          const isFinalBatch = i === allBatches.length - 1
+
+          await sendWebhookRequest(
+            remoteEndpoint,
+            {
+              batchId: processingBatchId,
+              entities,
+              isFinalBatch
+            },
+            secret
+          )
+
+          totalProcessed += entities.length
+        }
+      } else {
+        // Send an empty final batch to signal completion when no entities changed
+        await sendWebhookRequest(
+          remoteEndpoint,
+          {
+            batchId: processingBatchId,
+            entities: [],
+            isFinalBatch: true
+          },
+          secret
+        )
       }
 
       await saveCache(tagCache, cache)

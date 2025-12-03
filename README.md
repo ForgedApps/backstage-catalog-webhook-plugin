@@ -77,6 +77,31 @@ The plugin supports the following configuration options:
 
 Note: While the secret is optional, it's strongly recommended for security purposes. When configured, it allows the receiving server to validate the authenticity of incoming webhook payloads.
 
+### Persistent Cache Configuration
+
+By default, Backstage uses an in-memory cache that is lost on restart. To ensure the plugin's ETag cache persists across restarts (preventing unnecessary resends of all entities), configure Backstage to use a persistent cache backend.
+
+Add the following to your `app-config.yaml` to use Redis as a persistent cache:
+
+```yaml
+backend:
+  cache:
+    store: redis
+    connection: 'redis://localhost:6379'  # Adjust to your Redis connection string
+```
+
+Alternatively, you can use a file-based cache for development:
+
+```yaml
+backend:
+  cache:
+    store: memory
+    # Note: file-based cache is not officially supported but can be configured
+    # For production, Redis or another persistent cache backend is recommended
+```
+
+For more details on cache configuration options, see the [Backstage cache documentation](https://backstage.io/docs/backend-system/core-services/cache/).
+
 ## Usage
 
 Once installed and configured, the plugin will automatically start sending catalog updates to the specified remote endpoint at the configured interval. No additional action is required.

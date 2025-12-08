@@ -90,16 +90,6 @@ backend:
     connection: 'redis://localhost:6379'  # Adjust to your Redis connection string
 ```
 
-Alternatively, you can use a file-based cache for development:
-
-```yaml
-backend:
-  cache:
-    store: memory
-    # Note: file-based cache is not officially supported but can be configured
-    # For production, Redis or another persistent cache backend is recommended
-```
-
 For more details on cache configuration options, see the [Backstage cache documentation](https://backstage.io/docs/backend-system/core-services/cache/).
 
 ## Usage

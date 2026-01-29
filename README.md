@@ -41,6 +41,7 @@ To install this plugin in your Backstage instance, follow these steps:
      webhook:
        remoteEndpoint: 'https://your-remote-endpoint.com/webhook'
        intervalMinutes: 10  # Optional, defaults to 10 if not specified
+       timeoutMinutes: 2  # Optional, defaults to 2 if not specified
        secret: 'your-secret-key'  # Optional, but recommended for security
        entityRequestSize: 500  # Optional, defaults to 500 if not specified
        entitySendSize: 50  # Optional, defaults to 50 if not specified
@@ -69,6 +70,7 @@ The plugin supports the following configuration options:
 
 - `catalog.webhook.remoteEndpoint`: (Required) The URL of the remote endpoint where catalog updates will be sent.
 - `catalog.webhook.intervalMinutes`: (Optional) The interval in minutes between each update check. Defaults to 10 minutes if not specified.
+- `catalog.webhook.timeoutMinutes`: (Optional) The scheduler timeout in minutes for each processing run. Defaults to 2 minutes if not specified.
 - `catalog.webhook.secret`: (Optional) A secret key that will be sent with the webhook payload for validation by the receiving server. If not provided, the webhook will function without a secret.
 - `catalog.webhook.entityRequestSize`: (Optional) The number of entities to retrieve from Backstage per request. Defaults to 500 (max).
 - `catalog.webhook.entitySendSize`: (Optional) The number of entities to send to the remote endpoint at any one time. This is an important number as payloads can grow too large for the remote server to handle due to the amount of data stored for each entity in Backstage. Defaults to 100.

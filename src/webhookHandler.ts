@@ -78,6 +78,8 @@ export const createWebhookHandler = (
     const secret = config.getOptionalString('catalog.webhook.secret')
     const minutes =
       config.getOptionalNumber('catalog.webhook.intervalMinutes') || 10
+    const timeoutMinutes =
+      config.getOptionalNumber('catalog.webhook.timeoutMinutes') || 2
 
     const catalogClient = new CatalogClient({ discoveryApi: discovery })
 
@@ -89,7 +91,7 @@ export const createWebhookHandler = (
 
     await scheduler.scheduleTask({
       frequency: { minutes },
-      timeout: { seconds: 30 },
+      timeout: { minutes: timeoutMinutes },
       id: 'process-entities',
       fn: async () =>
         await processEntities(catalogClient, remoteEndpoint, secret)
